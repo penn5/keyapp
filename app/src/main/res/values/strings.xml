@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Key Holder App</string>
+    <string name="action_settings">Settings</string>
+    <string name="okay">OK</string>
+    <string name="scan_fail">Scan Failed</string>
+    <string name="scan_fail_message">Scan failed with error 0x%1$x</string>
+    <string name="status_pre">Status: %s</string>
+    <string name="status_idle">Idle</string>
+    <string name="status_connecting">Connecting</string>
+    <string name="status_connected">Connected</string>
+    <string name="status_disconnected">Disconnected</string>
+    <string name="status_error">Error</string>
+    <string name="ping_ack">ACK</string>
+    <string name="ping_title">Ping response</string>
+    <string name="ping_not_ack">Failed</string>
+    <string name="check_fail">Failed</string>
+    <string name="check_title">Keys Presence Check</string>
+    <string name="status_connected_firsttime">Connected (first time)</string>
+    <string name="ping_button">ping</string>
+    <string name="check_button">check</string>
+</resources>
