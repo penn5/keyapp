@@ -1,9 +1,11 @@
 package tk.hack5.keyapp
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.le.ScanSettings
 import android.content.*
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
@@ -14,6 +16,8 @@ import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import java.security.SecureRandom
@@ -54,6 +58,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun scanForDevice() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(
+                    this,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            ) {
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.permission_request)
+                    .setMessage(R.string.permission_request_location)
+                    .setPositiveButton(R.string.continue_button) { dialog: DialogInterface, _: Int ->
+                        dialog.dismiss()
+                        scanForDevice()
+                    }
+                    .setNegativeButton(R.string.exit_button) { dialog: DialogInterface, _: Int ->
+                        dialog.dismiss()
+                        this.finish()
+                    }
+                    .setCancelable(false)
+                    .show()
+                    .setCanceledOnTouchOutside(false)
+            }
+        }
         bluetoothAdapter.takeIf { !it.isEnabled }?.apply {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             startActivityForResult(enableBtIntent, ENABLE_BT_REQUEST)
@@ -95,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                                 Log.e(tag, "Device disconnected!")
                                 state = State.DISCONNECTED
                             }, { data: ByteArray ->
-                                if (data.toUByteArray().size == 1 && data.toUByteArray()[0].toInt() == 0xE0 && state == State.CONNECTED) {
+                                if (data.toUByteArray()[0].toInt() == 0xE0 && state == State.CONNECTED) {
                                     val sharedPreferences =
                                         getSharedPreferences("", Context.MODE_PRIVATE)
                                     if (!sharedPreferences.contains("")) {
@@ -110,19 +140,19 @@ class MainActivity : AppCompatActivity() {
                                     state = State.PAIRING
                                     binder.sendData(authUBytes.toByteArray())
 
-                                } else if (data.toUByteArray().size == 2 && data.toUByteArray()[0].toInt() == 0xFD && state == State.PAIRING) {
+                                } else if (data.toUByteArray()[0].toInt() == 0xFD && state == State.PAIRING) {
                                     state = State.IDLE
                                     // Device found, we are reconnected
                                     runOnUiThread { setStatus(R.string.status_connected) }
-                                } else if (data.toUByteArray().size == 2 && data.toUByteArray()[0].toInt() == 0xCE && state == State.PAIRING) {
+                                } else if (data.toUByteArray()[0].toInt() == 0xCE && state == State.PAIRING) {
                                     state = State.IDLE
                                     // Device created, we are connected for first time
                                     runOnUiThread { setStatus(R.string.status_connected_firsttime) }
-                                } else if (data.toUByteArray().size == 1 && data.toUByteArray()[0].toInt() == 0xED && state == State.PAIRING) {
+                                } else if (data.toUByteArray()[0].toInt() == 0xED && state == State.PAIRING) {
                                     state = State.DISCONNECTED
                                     // All slots used, show error
                                     runOnUiThread { setStatus(R.string.status_error) }
-                                } else if (data.toUByteArray().size == 1 && state == State.PENDING_PING) {
+                                } else if (state == State.PENDING_PING) {
                                     state = State.IDLE
                                     val builder = AlertDialog.Builder(this@MainActivity)
                                         .setTitle(R.string.ping_title)
@@ -133,7 +163,7 @@ class MainActivity : AppCompatActivity() {
                                             }
                                         )
                                     runOnUiThread { builder.show() }
-                                } else if (data.toUByteArray().size == 1 && state == State.PENDING_CHECK) {
+                                } else if (state == State.PENDING_CHECK) {
                                     state = State.IDLE
                                     val builder = AlertDialog.Builder(this@MainActivity)
                                     if (data.toUByteArray()[0].toInt() in 0..0b1111) {
