@@ -86,11 +86,10 @@ class MainActivity : AppCompatActivity() {
                     .setMessage(R.string.permission_request_location)
                     .setPositiveButton(R.string.continue_button) { dialog: DialogInterface, _: Int ->
                         dialog.dismiss()
-                        val intent = Intent()
-                        intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                        val uri = Uri.fromParts("package", packageName, null)
-                        intent.data = uri
-                        startActivity(intent)
+                        startActivity(Intent().apply {
+                            action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                            data = Uri.fromParts("package", packageName, null)
+                        })
                     }
                     .setNegativeButton(R.string.exit_button) { dialog: DialogInterface, _: Int ->
                         dialog.dismiss()
