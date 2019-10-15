@@ -6,9 +6,11 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.le.ScanSettings
 import android.content.*
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.Settings
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -21,6 +23,7 @@ import androidx.core.content.ContextCompat
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import java.security.SecureRandom
+
 
 @ExperimentalUnsignedTypes
 class MainActivity : AppCompatActivity() {
@@ -57,6 +60,16 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == GET_PERMISSION_REQUEST) {
+            scanForDevice() // It will check whether we have the permission now and re-request if needed
+        }
+    }
+
     private fun scanForDevice() {
         if (ContextCompat.checkSelfPermission(
                 this,
@@ -73,7 +86,11 @@ class MainActivity : AppCompatActivity() {
                     .setMessage(R.string.permission_request_location)
                     .setPositiveButton(R.string.continue_button) { dialog: DialogInterface, _: Int ->
                         dialog.dismiss()
-                        scanForDevice()
+                        val intent = Intent()
+                        intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                        val uri = Uri.fromParts("package", packageName, null)
+                        intent.data = uri
+                        startActivity(intent)
                     }
                     .setNegativeButton(R.string.exit_button) { dialog: DialogInterface, _: Int ->
                         dialog.dismiss()
@@ -82,7 +99,14 @@ class MainActivity : AppCompatActivity() {
                     .setCancelable(false)
                     .show()
                     .setCanceledOnTouchOutside(false)
+            } else {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                    GET_PERMISSION_REQUEST
+                )
             }
+            return
         }
         bluetoothAdapter.takeIf { !it.isEnabled }?.apply {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -239,6 +263,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val tag = "KeyHolderMainActivity"
         private const val ENABLE_BT_REQUEST = 1
+        private const val GET_PERMISSION_REQUEST = 2
         private const val DEVICE_NAME = "Key Holder"
 
         enum class State { DISCONNECTED, CONNECTED, PAIRING, IDLE, PENDING_PING, PENDING_CHECK }
