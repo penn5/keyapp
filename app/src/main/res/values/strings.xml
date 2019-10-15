@@ -5,7 +5,6 @@
     <string name="scan_fail">Scan Failed</string>
     <string name="scan_fail_message">Scan failed with error 0x%1$x</string>
     <string name="status_pre">Status: %s</string>
-    <string name="status_idle">Idle</string>
     <string name="status_connecting">Connecting</string>
     <string name="status_connected">Connected</string>
     <string name="status_disconnected">Disconnected</string>
@@ -22,4 +21,5 @@
     <string name="permission_request_location">Because scanning for Bluetooth devices can expose your physical location, Android requires applications to have permission to do this before using Bluetooth. Don\'t worry: we will never access your location or upload any data to our servers!</string>
     <string name="continue_button">Continue</string>
     <string name="exit_button">Exit</string>
+    <string name="work_button">Do work</string>
 </resources>

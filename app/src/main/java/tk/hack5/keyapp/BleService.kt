@@ -13,7 +13,6 @@ import kotlin.concurrent.thread
 import kotlin.math.min
 
 class BleService : Service() {
-    private lateinit var bluetoothAdapter: BluetoothAdapter
     private lateinit var mGattCallback: BluetoothGattCallback
     private var mBluetoothGatt: BluetoothGatt? = null
     private var onConnect: (() -> Unit)? = null
@@ -28,15 +27,17 @@ class BleService : Service() {
 
     private var onWritten: ((success: Boolean) -> Unit)? = null
 
-    override fun onBind(intent: Intent): IBinder {
+    override fun onBind(intent: Intent): IBinder? {
         Log.d(tag, "Binding")
-        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()!!
         thread(start = true) {
             Looper.prepare()
             mHandler = Handler()
             Looper.loop()
         }
-        return BleBinder()
+        return if (!isConnected)
+            BleBinder()
+        else
+            null
     }
 
     override fun onDestroy() {

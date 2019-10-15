@@ -20,6 +20,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import java.security.SecureRandom
@@ -138,6 +140,7 @@ class MainActivity : AppCompatActivity() {
 
                         @SuppressLint("ApplySharedPref")
                         override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+                            val sharedPreferences = getSharedPreferences("", Context.MODE_PRIVATE)
                             setStatus(R.string.status_connecting)
                             this@MainActivity.serviceBinder = binder as BleService.BleBinder
                             binder.registerCallbacks({
@@ -149,8 +152,6 @@ class MainActivity : AppCompatActivity() {
                                 state = State.DISCONNECTED
                             }, { data: ByteArray ->
                                 if (data.toUByteArray()[0].toInt() == 0xE0 && state == State.CONNECTED) {
-                                    val sharedPreferences =
-                                        getSharedPreferences("", Context.MODE_PRIVATE)
                                     if (!sharedPreferences.contains("")) {
                                         sharedPreferences.edit()
                                             .putLong("", SecureRandom().nextLong()).commit()
@@ -169,6 +170,7 @@ class MainActivity : AppCompatActivity() {
                                     runOnUiThread { setStatus(R.string.status_connected) }
                                 } else if (data.toUByteArray()[0].toInt() == 0xCE && state == State.PAIRING) {
                                     state = State.IDLE
+                                    sharedPreferences.edit().putString("mac", it.device.address)
                                     // Device created, we are connected for first time
                                     runOnUiThread { setStatus(R.string.status_connected_firsttime) }
                                 } else if (data.toUByteArray()[0].toInt() == 0xED && state == State.PAIRING) {
@@ -259,12 +261,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
+    fun work(view: View) {
+        WorkManager.getInstance(this).beginWith(OneTimeWorkRequest.from(CheckWorker::class.java))
+            .enqueue()
+    }
+
     companion object {
         private const val tag = "KeyHolderMainActivity"
         private const val ENABLE_BT_REQUEST = 1
         private const val GET_PERMISSION_REQUEST = 2
         private const val DEVICE_NAME = "Key Holder"
 
-        enum class State { DISCONNECTED, CONNECTED, PAIRING, IDLE, PENDING_PING, PENDING_CHECK }
     }
 }
