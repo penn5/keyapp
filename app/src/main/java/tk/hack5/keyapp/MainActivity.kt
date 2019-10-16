@@ -20,11 +20,13 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.work.OneTimeWorkRequest
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_main.*
 import java.security.SecureRandom
+import java.util.concurrent.TimeUnit
 
 
 @ExperimentalUnsignedTypes
@@ -171,6 +173,17 @@ class MainActivity : AppCompatActivity() {
                                 } else if (data.toUByteArray()[0].toInt() == 0xCE && state == State.PAIRING) {
                                     state = State.IDLE
                                     sharedPreferences.edit().putString("mac", it.device.address)
+                                        .commit()
+                                    WorkManager.getInstance(this@MainActivity)
+                                        .enqueueUniquePeriodicWork(
+                                            "check",
+                                            ExistingPeriodicWorkPolicy.REPLACE,
+                                            PeriodicWorkRequest.Builder(
+                                                CheckWorker::class.java,
+                                                15,
+                                                TimeUnit.MINUTES
+                                            ).setInitialDelay(10, TimeUnit.SECONDS).build()
+                                        )
                                     // Device created, we are connected for first time
                                     runOnUiThread { setStatus(R.string.status_connected_firsttime) }
                                 } else if (data.toUByteArray()[0].toInt() == 0xED && state == State.PAIRING) {
@@ -263,8 +276,13 @@ class MainActivity : AppCompatActivity() {
 
     @Suppress("UNUSED_PARAMETER")
     fun work(view: View) {
-        WorkManager.getInstance(this).beginWith(OneTimeWorkRequest.from(CheckWorker::class.java))
-            .enqueue()
+        WorkManager.getInstance(this)
+            .enqueueUniquePeriodicWork(
+                "check",
+                ExistingPeriodicWorkPolicy.REPLACE,
+                PeriodicWorkRequest.Builder(CheckWorker::class.java, 15, TimeUnit.MINUTES).build()
+            )
+
     }
 
     companion object {

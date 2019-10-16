@@ -50,7 +50,7 @@ class BleService : Service() {
     private fun connectDevice(device: BluetoothDevice) {
         mGattCallback = GattCallback()
         mBluetoothGatt = device.connectGatt(this, false, mGattCallback)!!
-        Log.e(tag, "Connected device! It is $mBluetoothGatt")
+        Log.e(tag, "Connecting device! It is $mBluetoothGatt")
     }
 
     private fun registerCallbacks(
@@ -163,6 +163,11 @@ class BleService : Service() {
                 isConnected = false
                 onDisconnect?.invoke()
                 gatt.disconnect() // Otherwise the callback remains registered and all events are duplicated
+            } else if (status == 0x85) { // https://android.googlesource.com/platform/external/bluetooth/bluedroid/+/adc9f28ad418356cb81640059b59eee4d862e6b4/stack/include/gatt_api.h#54
+                Log.e(tag, "Connection Failed! $status:$newState (${gatt.device.address})")
+                onDisconnect?.invoke()
+            } else {
+                Log.e(tag, "unknown status $status:$newState")
             }
         }
 

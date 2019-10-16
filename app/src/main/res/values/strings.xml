@@ -22,4 +22,7 @@
     <string name="continue_button">Continue</string>
     <string name="exit_button">Exit</string>
     <string name="work_button">Do work</string>
+    <string name="notification_channel">Missing Keys</string>
+    <string name="notification_title">Missing Keys</string>
+    <string name="notification_text">Your keys are missing! Remember to look for them!</string>
 </resources>
