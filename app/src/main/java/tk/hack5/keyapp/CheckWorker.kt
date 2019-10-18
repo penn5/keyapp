@@ -1,10 +1,8 @@
 package tk.hack5.keyapp
 
 import android.annotation.SuppressLint
-import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.bluetooth.BluetoothAdapter
 import android.content.ComponentName
 import android.content.Context
@@ -19,8 +17,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.work.ListenableWorker
 import androidx.work.WorkerParameters
 import com.google.common.util.concurrent.ListenableFuture
-import java.security.SecureRandom
-import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 @ExperimentalUnsignedTypes
 class CheckWorker(private val context: Context, params: WorkerParameters) :
@@ -29,14 +26,10 @@ class CheckWorker(private val context: Context, params: WorkerParameters) :
     private var serviceBinder: BleService.BleBinder? = null
     private var state: State = State.DISCONNECTED
     private var keyId = -1
-    private var broadcastSelf: PendingIntent? = null
 
 
     override fun startWork(): ListenableFuture<Result> {
         Log.d(tag, "Check starting")
-        if (broadcastSelf == null)
-            broadcastSelf =
-                PendingIntent.getBroadcast(context, 0, Intent(context, CheckWorker::class.java), 0)
         return CallbackToFutureAdapter.getFuture { completer: CallbackToFutureAdapter.Completer<Result> ->
             bluetoothAdapter.let {
                 val adapter: BluetoothAdapter
@@ -46,18 +39,14 @@ class CheckWorker(private val context: Context, params: WorkerParameters) :
                     }
                 else
                     adapter = it
-                val sharedPreferences = context.getSharedPreferences("", Context.MODE_PRIVATE)
+                val sharedPreferences = context.createDeviceProtectedStorageContext()
+                    .getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
                 val device = adapter.getRemoteDevice(sharedPreferences.getString("mac", null) ?: {
                     Log.e(tag, "Device not set in SharedPreferences")
                     completer.setException(RuntimeException("Device not set in SharedPreferences"))
                     null
                 }() ?: return@getFuture null)
-
-                context.getSystemService(AlarmManager::class.java)!!.set(
-                    AlarmManager.RTC,
-                    System.currentTimeMillis() + TimeUnit.HOURS.toMillis(1), broadcastSelf
-                )
 
                 context.bindService(
                     Intent(context, BleService::class.java),
@@ -75,57 +64,64 @@ class CheckWorker(private val context: Context, params: WorkerParameters) :
                                 Log.d(tag, "Device connected!")
                                 state = State.CONNECTED
                             }, {
-                                Log.e(tag, "Device disconnected!")
-                                if (state != State.IDLE)
-                                    completer.setException(RuntimeException("Device disconnected unexpectedly!"))
+                                Log.d(tag, "Device disconnected!")
                                 state = State.DISCONNECTED
-                            }, { data: ByteArray ->
+                                completer.set(Result.success())
+                            }, parser@{ data: ByteArray ->
+                                Log.e(
+                                    tag,
+                                    "Incoming Data! ${data.asUByteArray().contentToString()} ($state)"
+                                )
                                 data.toUByteArray().map { byte -> byte.toInt() }
                                     .forEachIndexed { index, byte ->
                                         if (byte == 0xE0 && state == State.CONNECTED) {
                                             Log.d(tag, "Got E0")
-                                            if (!sharedPreferences.contains("")) {
+                                            if (!sharedPreferences.contains("secret")) {
                                                 sharedPreferences.edit()
-                                                    .putLong("", SecureRandom().nextLong()).commit()
+                                                    .putLong("secret", Random.nextLong()).commit()
                                             }
-                                            val authKey = sharedPreferences.getLong("", 0).toULong()
+                                            val authKey =
+                                                sharedPreferences.getLong("secret", 0).toULong()
                                             val authUBytes = UByteArray(4)
                                             for (i in 0..3) {
                                                 authUBytes[i] = authKey.shr(i * 8).toUByte()
                                             }
                                             state = State.PAIRING
                                             binder.sendData(authUBytes.toByteArray())
-
+                                            return@parser
                                         } else if (byte == 0xFD && state == State.PAIRING) {
                                             Log.d(tag, "Got FD")
                                             state = State.PENDING_PING
                                             keyId = data.toUByteArray()[index + 1].toInt()
                                             binder.sendData("p".toByteArray(Charsets.ISO_8859_1))
-                                            // Device found, we are reconnected
+                                            return@parser
                                         } else if (byte == 0xCE && state == State.PAIRING) {
                                             Log.e(tag, "Got CE")
-                                            state = State.DISCONNECTED
-                                            completer.setException(RuntimeException("Device was created, that's wrong"))
-                                            // Device created, we are connected for first time
+                                            // Device was created (that's wrong) but we'll continue anyway
+                                            state = State.PENDING_PING
+                                            keyId = data.toUByteArray()[index + 1].toInt()
+                                            binder.sendData("p".toByteArray(Charsets.ISO_8859_1))
+                                            return@parser
                                         } else if (byte == 0xED && state == State.PAIRING) {
                                             Log.e(tag, "Got ED")
                                             state = State.DISCONNECTED
                                             completer.setException(RuntimeException("All slots full, that's wrong"))
+                                            return@parser
                                             // All slots used, show error
-                                        } else if (state == State.PENDING_PING) {
+                                        } else if (state == State.PENDING_PING && byte == 0xAC) {
                                             state = State.PENDING_CHECK
                                             binder.sendData("c".toByteArray(Charsets.ISO_8859_1))
+                                            return@parser
                                         } else if (state == State.PENDING_CHECK) {
                                             Log.d(
                                                 tag,
                                                 "Got check response $byte"
                                             )
                                             state = State.IDLE
+                                            val notificationManager =
+                                                NotificationManagerCompat.from(context)
                                             if (byte and (1 shl keyId) == 0) {
                                                 Log.e(tag, "Key not present!")
-                                                NotificationCompat.Builder(context, CHANNEL_ID)
-                                                val notificationManager =
-                                                    NotificationManagerCompat.from(context)
                                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                                                     notificationManager.createNotificationChannel(
                                                         NotificationChannel(
@@ -142,16 +138,12 @@ class CheckWorker(private val context: Context, params: WorkerParameters) :
                                                         .setContentText(context.getString(R.string.notification_text))
                                                         .build()
                                                 )
-
+                                            } else {
+                                                notificationManager.cancelAll()
                                             }
-                                            completer.set(Result.success())
+                                            return@parser
                                         }
-                                }
-                                Log.e(
-                                    tag,
-                                    "Incoming Data! ${data.asUByteArray().contentToString()} ($state)"
-                                )
-
+                                    }
                             })
                             binder.connectDevice(device)
                         }

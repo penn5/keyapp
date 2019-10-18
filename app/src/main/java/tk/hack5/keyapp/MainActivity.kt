@@ -142,7 +142,11 @@ class MainActivity : AppCompatActivity() {
 
                         @SuppressLint("ApplySharedPref")
                         override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-                            val sharedPreferences = getSharedPreferences("", Context.MODE_PRIVATE)
+                            val sharedPreferences =
+                                createDeviceProtectedStorageContext().getSharedPreferences(
+                                    "prefs",
+                                    Context.MODE_PRIVATE
+                                )
                             setStatus(R.string.status_connecting)
                             this@MainActivity.serviceBinder = binder as BleService.BleBinder
                             binder.registerCallbacks({
@@ -154,11 +158,11 @@ class MainActivity : AppCompatActivity() {
                                 state = State.DISCONNECTED
                             }, { data: ByteArray ->
                                 if (data.toUByteArray()[0].toInt() == 0xE0 && state == State.CONNECTED) {
-                                    if (!sharedPreferences.contains("")) {
+                                    if (!sharedPreferences.contains("secret")) {
                                         sharedPreferences.edit()
-                                            .putLong("", SecureRandom().nextLong()).commit()
+                                            .putLong("secret", SecureRandom().nextLong()).commit()
                                     }
-                                    val authKey = sharedPreferences.getLong("", 0).toULong()
+                                    val authKey = sharedPreferences.getLong("secret", 0).toULong()
                                     val authUBytes = UByteArray(4)
                                     for (i in 0..3) {
                                         authUBytes[i] = authKey.shr(i * 8).toUByte()
