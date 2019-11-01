@@ -20,6 +20,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequest
 import androidx.work.WorkManager
@@ -183,10 +184,11 @@ class MainActivity : AppCompatActivity() {
                                             "check",
                                             ExistingPeriodicWorkPolicy.REPLACE,
                                             PeriodicWorkRequest.Builder(
-                                                CheckWorker::class.java,
-                                                15,
-                                                TimeUnit.MINUTES
-                                            ).setInitialDelay(10, TimeUnit.SECONDS).build()
+                                                CheckWorker::class.java, 15,
+                                                TimeUnit.MINUTES, 5, TimeUnit.MINUTES
+                                            )
+                                                .setConstraints(Constraints.NONE)
+                                                .build()
                                         )
                                     // Device created, we are connected for first time
                                     runOnUiThread { setStatus(R.string.status_connected_firsttime) }
@@ -284,7 +286,12 @@ class MainActivity : AppCompatActivity() {
             .enqueueUniquePeriodicWork(
                 "check",
                 ExistingPeriodicWorkPolicy.REPLACE,
-                PeriodicWorkRequest.Builder(CheckWorker::class.java, 15, TimeUnit.MINUTES).build()
+                PeriodicWorkRequest.Builder(
+                    CheckWorker::class.java, 15,
+                    TimeUnit.MINUTES, 5, TimeUnit.MINUTES
+                )
+                    .setConstraints(Constraints.NONE)
+                    .build()
             )
 
     }
