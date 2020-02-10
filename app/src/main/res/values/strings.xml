@@ -25,4 +25,18 @@
     <string name="notification_channel">Missing Keys</string>
     <string name="notification_title">Missing Keys</string>
     <string name="notification_text">Your keys are missing! Remember to look for them!</string>
+    <string name="bt_notification_title">Bluetooth Unavailable</string>
+    <string name="bt_notification_text">Bluetooth is required for key detection.</string>
+    <string name="bt_notification_text_long">Bluetooth is required to notify you when your keys are missing. Tap to turn it on.</string>
+    <string name="hook4">Hook 4</string>
+    <string name="hook3">Hook 3</string>
+    <string name="hook2">Hook 2</string>
+    <string name="hook1">Hook 1</string>
+    <string name="cant_connect">Can\'t connect to key holder</string>
+    <string name="bt_off">Bluetooth is off</string>
+    <string name="unpaired">Unpaired?!?</string>
+    <string name="title_activity_setup">SetupActivity</string>
+    <string name="scan_help">Please click the button in the bottom right to initiate a Bluetooth scan for your key holder.</string>
+    <string name="slots_full">All 4 key hooks are used. Please factory reset the holder using the button on the side</string>
+    <string name="action_reset">Unpair</string>
 </resources>

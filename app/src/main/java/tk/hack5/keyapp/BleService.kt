@@ -47,10 +47,11 @@ class BleService : Service() {
         super.onDestroy()
     }
 
-    private fun connectDevice(device: BluetoothDevice) {
+    private fun connectDevice(device: BluetoothDevice): Boolean {
         mGattCallback = GattCallback()
-        mBluetoothGatt = device.connectGatt(this, false, mGattCallback)!!
+        mBluetoothGatt = device.connectGatt(this, false, mGattCallback) ?: return false
         Log.e(tag, "Connecting device! It is $mBluetoothGatt")
+        return true
     }
 
     private fun registerCallbacks(
@@ -64,11 +65,17 @@ class BleService : Service() {
     }
 
     private fun initializeAT() {
-        ATSerialCharacteristic!!.value = "AT+CURRUART=115200".toByteArray(Charsets.ISO_8859_1)
-        mBluetoothGatt!!.writeCharacteristic(ATSerialCharacteristic)
+        if (!isConnected) {
+            ATSerialCharacteristic!!.value = "AT+CURRUART=115200".toByteArray(Charsets.ISO_8859_1)
+            mBluetoothGatt!!.writeCharacteristic(ATSerialCharacteristic)
+        }
         mBluetoothGatt!!.setCharacteristicNotification(dataSerialCharacteristic, true)
+        val wasConnected = isConnected
         isConnected = true
         onConnect?.invoke()
+        if (wasConnected) {
+            sendData(byteArrayOf('r'.toByte()), {})
+        }
     }
 
     private fun sendData(
@@ -105,8 +112,8 @@ class BleService : Service() {
     }
 
     inner class BleBinder : Binder() {
-        fun connectDevice(device: BluetoothDevice) {
-            this@BleService.connectDevice(device)
+        fun connectDevice(device: BluetoothDevice): Boolean {
+            return this@BleService.connectDevice(device)
         }
 
         fun registerCallbacks(
@@ -132,8 +139,13 @@ class BleService : Service() {
                 tag,
                 "Received data on ${characteristic.uuid}: ${characteristic.value?.contentToString()}"
             )
-            if (characteristic.uuid == DATA_SERIAL_UUID)
-                onRx?.invoke(characteristic.value)
+            if (characteristic.uuid == DATA_SERIAL_UUID) {
+                if (characteristic.value?.contentEquals(DISCONNECT_STR) == true) {
+                    isConnected = false
+                    onDisconnect?.invoke()
+                } else
+                    onRx?.invoke(characteristic.value)
+            }
         }
 
         override fun onCharacteristicWrite(
@@ -157,7 +169,7 @@ class BleService : Service() {
 
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             if (this != this@BleService.mGattCallback) return // We are from an old device
-            if (newState == BluetoothProfile.STATE_CONNECTED && !isConnected) {
+            if (newState == BluetoothProfile.STATE_CONNECTED) {
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED && isConnected) {
                 isConnected = false
@@ -165,6 +177,10 @@ class BleService : Service() {
                 gatt.disconnect() // Otherwise the callback remains registered and all events are duplicated
             } else if (status == 0x85) { // https://android.googlesource.com/platform/external/bluetooth/bluedroid/+/adc9f28ad418356cb81640059b59eee4d862e6b4/stack/include/gatt_api.h#54
                 Log.e(tag, "Connection Failed! $status:$newState (${gatt.device.address})")
+                onDisconnect?.invoke()
+            } else if (status == 0x80) {
+                // GATT_NO_RESOURCES
+                Log.e(tag, "Device has no resources - someone else is already using it!")
                 onDisconnect?.invoke()
             } else {
                 Log.e(tag, "unknown status $status:$newState")
@@ -235,5 +251,7 @@ class BleService : Service() {
         private val DATA_SERIAL_UUID = UUID.fromString("0000dfb1-0000-1000-8000-00805f9b34fb")!!
         private val AT_SERIAL_UUID = UUID.fromString("0000dfb2-0000-1000-8000-00805f9b34fb")!!
         private const val MAX_TRANSMISSION_UNIT = 17 // Bluno official example app does this
+        // ASCII for `Restarting, goodbye!`
+        private val DISCONNECT_STR = byteArrayOf(82, 101, 115, 116, 97, 114, 116, 105, 110, 103, 44, 32, 103, 111, 111, 100, 98, 121, 101, 33)
     }
 }

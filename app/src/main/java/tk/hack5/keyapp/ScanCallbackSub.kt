@@ -33,7 +33,6 @@ class ScanCallbackSub(
         )
         if (serviceMac != null && result.scanRecord?.serviceUuids?.none { it?.uuid == serviceMac } != false) return // Check the service as ScanFilters is broken on some devices
         if (deviceName != null && result.device.name != deviceName) return
-//        Log.d(tag, "got results $result ($callbackType)")
         synchronized(this) {
             when (callbackType) {
                 ScanSettings.CALLBACK_TYPE_MATCH_LOST -> {

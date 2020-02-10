@@ -3,4 +3,10 @@
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
+    <color name="hook">@color/key_unknown</color>
+    <color name="holder">#FFB74D</color>
+    <color name="my_hook">#039BE5</color>
+    <color name="key_present">#00C853</color>
+    <color name="key_missing">#BF360C</color>
+    <color name="key_unknown">#039BE5</color>
 </resources>
