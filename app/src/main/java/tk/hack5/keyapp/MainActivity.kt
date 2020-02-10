@@ -4,8 +4,8 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
-import android.os.Handler
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -32,8 +32,6 @@ class MainActivity : AppCompatActivity() {
     private var loaded = false
 
     private lateinit var bluetoothAdapter: BluetoothAdapter
-
-    private var handler: Handler? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,8 +112,12 @@ class MainActivity : AppCompatActivity() {
         // as you specify a parent activity in AndroidManifest.xml.
         return when (item.itemId) {
             R.id.action_reset -> {
-                createDeviceProtectedStorageContext().getSharedPreferences(SHARED_PREFS_NAME,
-                    Context.MODE_PRIVATE).edit().clear().commit()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    createDeviceProtectedStorageContext()
+                } else {
+                    this
+                }.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE).edit()
+                    .clear().commit()
                 update()
                 true
             }
@@ -124,7 +126,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loading(loading: Boolean) {
-        if (loading) {
+        if
+                (loading) {
             progressBar.visibility = View.VISIBLE
             mainView.visibility = View.GONE
         } else {

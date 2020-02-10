@@ -106,7 +106,7 @@ class Checker(private val context: Context) {
 
 
     fun startWork(): ListenableFuture<Result> {
-        val ret = CallbackToFutureAdapter.getFuture { completer: CallbackToFutureAdapter.Completer<Result> ->
+        return CallbackToFutureAdapter.getFuture { completer: CallbackToFutureAdapter.Completer<Result> ->
             thread(start = true) {
                 lock.acquire()
                 Log.d(tag, "Check starting")
@@ -129,8 +129,11 @@ class Checker(private val context: Context) {
                         }
                     else
                         adapter = it
-                    val sharedPreferences = context.createDeviceProtectedStorageContext()
-                        .getSharedPreferences("prefs", Context.MODE_PRIVATE)
+                    val sharedPreferences = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        context.createDeviceProtectedStorageContext()
+                    } else {
+                        context
+                    }.getSharedPreferences("prefs", Context.MODE_PRIVATE)
 
                     val device =
                         adapter.getRemoteDevice(sharedPreferences.getString("mac", null) ?: {
@@ -152,7 +155,7 @@ class Checker(private val context: Context) {
                             @SuppressLint("ApplySharedPref")
                             override fun onServiceConnected(name: ComponentName, binder: IBinder) {
                                 Log.d(tag, "Service connected")
-                                this@Checker.serviceBinder = binder as BleService.BleBinder
+                                serviceBinder = binder as BleService.BleBinder
                                 binder.registerCallbacks({
                                     Log.d(tag, "Device connected!")
                                     state = State.CONNECTED
@@ -224,7 +227,6 @@ class Checker(private val context: Context) {
                 }
             }
         }
-        return ret
     }
 
     companion object {

@@ -68,6 +68,6 @@ class ScanCallbackSub(
     }
 
     companion object {
-        private const val tag = "KeyHolderScanCallbackSub"
+        private const val tag = "KeyHolderScanCBSub"
     }
 }

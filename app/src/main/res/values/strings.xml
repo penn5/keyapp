@@ -34,7 +34,7 @@
     <string name="hook1">Hook 1</string>
     <string name="cant_connect">Can\'t connect to key holder</string>
     <string name="bt_off">Bluetooth is off</string>
-    <string name="unpaired">Unpaired?!?</string>
+    <string name="unpaired">Key holder not paired</string>
     <string name="title_activity_setup">SetupActivity</string>
     <string name="scan_help">Please click the button in the bottom right to initiate a Bluetooth scan for your key holder.</string>
     <string name="slots_full">All 4 key hooks are used. Please factory reset the holder using the button on the side</string>

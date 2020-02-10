@@ -15,11 +15,9 @@ import android.provider.Settings
 import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AlertDialog
-import com.google.android.material.snackbar.Snackbar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-
 import kotlinx.android.synthetic.main.activity_setup.*
 import kotlinx.android.synthetic.main.content_setup.*
 import tk.hack5.keyapp.Utils.ENABLE_BT_REQUEST
@@ -95,15 +93,19 @@ class SetupActivity : AppCompatActivity() {
             startActivityForResult(enableBtIntent, ENABLE_BT_REQUEST)
             return
         }
+
         val settingsBuilder = ScanSettings.Builder()
-            .setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
-            .setNumOfMatches(ScanSettings.MATCH_NUM_FEW_ADVERTISEMENT)
             .setReportDelay(0)
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-        if (Build.VERSION.SDK_INT >= 26) {
+
+        if (Build.VERSION.SDK_INT >= 23)
+            settingsBuilder.setMatchMode(ScanSettings.MATCH_MODE_AGGRESSIVE)
+                .setNumOfMatches(ScanSettings.MATCH_NUM_FEW_ADVERTISEMENT)
+
+        if (Build.VERSION.SDK_INT >= 26)
             settingsBuilder.setLegacy(false)
-            settingsBuilder.setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
-        }
+                .setPhy(ScanSettings.PHY_LE_ALL_SUPPORTED)
+
         val settings = settingsBuilder.build()
         val adapter = ScanAdapter(this)
         val callback = ScanCallbackSub(
@@ -116,8 +118,11 @@ class SetupActivity : AppCompatActivity() {
             .setAdapter(adapter) { dialog: DialogInterface, position: Int ->
                 dialog.dismiss()
                 adapter.getItem(position)?.let {
-                    val sharedPreferences = createDeviceProtectedStorageContext()
-                        .getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
+                    val sharedPreferences = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        createDeviceProtectedStorageContext()
+                    } else {
+                        this
+                    }.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE)
                     sharedPreferences.edit().putString(SHARED_PREFS_MAC, it.device.address).commit()
                     loading(true)
                     Utils.update(this, {
@@ -126,7 +131,6 @@ class SetupActivity : AppCompatActivity() {
                     }, {
                         loading(false)
                         sharedPreferences.edit().clear().commit()
-                        // TODO dismiss loading on failure
                     }, false)
                 }
             }
@@ -142,11 +146,11 @@ class SetupActivity : AppCompatActivity() {
 
     private fun loading(loading: Boolean) {
         if (loading) {
-            connectProgress.visibility = View.GONE
-            mainText.visibility = View.VISIBLE
-        } else {
             connectProgress.visibility = View.VISIBLE
             mainText.visibility = View.GONE
+        } else {
+            connectProgress.visibility = View.GONE
+            mainText.visibility = View.VISIBLE
         }
     }
 
