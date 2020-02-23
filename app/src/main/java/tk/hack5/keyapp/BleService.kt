@@ -50,7 +50,7 @@ class BleService : Service() {
     private fun connectDevice(device: BluetoothDevice): Boolean {
         mGattCallback = GattCallback()
         mBluetoothGatt = device.connectGatt(this, false, mGattCallback) ?: return false
-        Log.e(tag, "Connecting device! It is $mBluetoothGatt")
+        Log.d(tag, "Connecting device! It is $mBluetoothGatt")
         return true
     }
 
